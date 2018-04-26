@@ -217,6 +217,7 @@ resources:
     depends_on:
       - external_router_int
     properties:
+      name: {list_join: ['-', ['admin', {get_param: 'OS::stack_name'}]]}
       image: { get_param: image }
       key_name: { get_resource: keypair }
       flavor: { get_param: admin_flavor }
@@ -283,7 +284,7 @@ resources:
       resource_def:
         type: caasp-stack-master.yaml
         properties:
-          name: {list_join: ['-', [{get_param: 'OS::stack_name'}, 'master', '%index%']]}
+          name: {list_join: ['-', ['master', '%index%', {get_param: 'OS::stack_name'}]]}
           image: { get_param: image }
           internal_net: { get_resource: internal_network }
           external_net: { get_param: external_net }
@@ -303,7 +304,7 @@ resources:
       resource_def:
         type: caasp-stack-worker.yaml
         properties:
-          name: {list_join: ['-', [{get_param: 'OS::stack_name'}, 'worker', '%index%']]}
+          name: {list_join: ['-', ['worker', '%index%', {get_param: 'OS::stack_name'}]]}
           image: { get_param: image }
           internal_net: { get_resource: internal_network }
           secgroup_base: { get_resource: secgroup_base }
