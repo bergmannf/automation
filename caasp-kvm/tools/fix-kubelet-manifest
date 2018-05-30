@@ -20,6 +20,10 @@ opts_parser = OptionParser.new do |opts|
     opts.on("-k", "--kubic", "Patch image names from sles to kubic") do |k|
       options[:kubic] = k
     end
+
+    opts.on("--only-patch-names", "Do only update container names in the manifests.") do |k|
+      options[:only_names] = true
+    end
 end
 opts_parser.parse!
 
@@ -33,30 +37,32 @@ manifest = YAML.load_file(ARGV[0])
 
 # Extend init containers to also set up `test` database by reusing the production database set up
 # logic.
-manifest["spec"]["initContainers"] ||= Array.new
-manifest["spec"]["initContainers"] += [
-  {
-    "name" => "mariadb-user-secrets-test",
-    "image" => "sles12/mariadb:__TAG__",
-    "command" => ["/setup-mysql.sh"],
-    "env" => [{ "name" => "ENV", "value" => "test" }],
-    "volumeMounts" => [
-      {
-        "mountPath" => "/infra-secrets",
-        "name" => "infra-secrets"
-      },
-      {
-        "mountPath" => "/var/run/mysql",
-        "name" => "mariadb-unix-socket"
-      },
-      {
-        "mountPath" => "/setup-mysql.sh",
-        "name" => "setup-mysql",
-        "readOnly" => true
-      }
-    ]
-  }
-]
+def patch_init_containers(manifest)
+  manifest["spec"]["initContainers"] ||= Array.new
+  manifest["spec"]["initContainers"] += [
+    {
+      "name" => "mariadb-user-secrets-test",
+      "image" => "sles12/mariadb:__TAG__",
+      "command" => ["/setup-mysql.sh"],
+      "env" => [{ "name" => "ENV", "value" => "test" }],
+      "volumeMounts" => [
+        {
+          "mountPath" => "/infra-secrets",
+          "name" => "infra-secrets"
+        },
+        {
+          "mountPath" => "/var/run/mysql",
+          "name" => "mariadb-unix-socket"
+        },
+        {
+          "mountPath" => "/setup-mysql.sh",
+          "name" => "setup-mysql",
+          "readOnly" => true
+        }
+      ]
+    }
+  ]
+end
 
 # Extend velum containers to use the development image, mount the source code and also set
 # the development environment variable for the rails environment.
@@ -84,16 +90,19 @@ def patch_containers(containers)
   end
 end
 
-patch_containers manifest["spec"]["initContainers"]
-patch_containers manifest["spec"]["containers"]
+unless options[:only_names]
+  patch_init_containers manifest
+  patch_containers manifest["spec"]["initContainers"]
+  patch_containers manifest["spec"]["containers"]
 
-# Add manifest volumes where Velum source code resides in order to mount it in the containers
-# for the development environment.
-manifest["spec"]["volumes"] ||= Array.new
-manifest["spec"]["volumes"] << {
-  "name" => "velum-devel",
-  "hostPath" => {"path" => "/var/lib/misc/velum-dev" },
-}
+  # Add manifest volumes where Velum source code resides in order to mount it in the containers
+  # for the development environment.
+  manifest["spec"]["volumes"] ||= Array.new
+  manifest["spec"]["volumes"] << {
+    "name" => "velum-devel",
+    "hostPath" => {"path" => "/var/lib/misc/velum-dev" },
+  }
+end
 
 # in the devsetup we are overwriting again the kubic changes during build time
 # so again replace sles12 image path with kubic
