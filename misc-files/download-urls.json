@@ -8,6 +8,12 @@
       "default": "http://download.suse.de/ibs/Devel:/CASP:/Head:/ControllerNode/",
       "provo": "http://mirror.caasp.suse.net/ibs/Devel:/CASP:/Head:/ControllerNode/"
     },
+    "devel_salt_update": {
+      "default": "http://download.suse.de/ibs/Devel:/CASP:/Head:/ControllerNode:/salt-update/"
+    },
+    "devel_salt_next": {
+      "default": "http://download.suse.de/ibs/Devel:/CASP:/Head:/ControllerNode:/salt-next/"
+    },
     "sandbox": {
       "default": "http://download.suse.de/ibs/Devel:/CASP:/SandBox/"
     },
