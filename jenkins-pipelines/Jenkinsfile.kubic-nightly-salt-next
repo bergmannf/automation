@@ -1,0 +1,33 @@
+def targetBranch = env.getEnvironment().get('CHANGE_TARGET', env.BRANCH_NAME)
+def kubicLib = library("kubic-jenkins-library@${targetBranch}").com.suse.kubic
+
+// This pipeline runs end-to-end tests daily against images that are build using
+// the next salt version-upgrade that will likely be released.
+
+properties([
+    buildDiscarder(logRotator(numToKeepStr: '31', daysToKeepStr: '31')),
+    disableConcurrentBuilds(),
+    pipelineTriggers([cron('H H(3-5) * * *')])
+])
+
+def kvmTypeOptions = kubicLib.CaaspKvmTypeOptions.new();
+kvmTypeOptions.vanilla = true
+kvmTypeOptions.disableMeltdownSpectreFixes = false
+kvmTypeOptions.image = "channel://devel_salt_next"
+
+coreKubicProjectPeriodic(
+    environmentTypeOptions: kvmTypeOptions,
+    environmentDestroy: env.ENVIRONMENT_DESTROY.toBoolean(),
+    masterCount: env.MASTER_COUNT.toInteger(),
+    workerCount: env.WORKER_COUNT.toInteger(),
+) {
+    // empty preBootstrapBody
+} {
+    // Run the Core Project Tests again
+    coreKubicProjectTests(
+        environment: environment,
+        podName: 'default',
+    )
+
+    return environment
+}
